@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Banner;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Intervention\Image\Facades\Image;
+use Illuminate\Support\Str;
 
 class BannerController extends Controller
 {
@@ -36,9 +39,15 @@ class BannerController extends Controller
      */
     public function store(Request $request)
     {
+        $img = Image::make($request->bg_img);
+        $img_name = auth()->id() . auth()->user()->name . Str::random('5') . "." .
+            $request->bg_img->getClientOriginalExtension();
+        $img->save(base_path('public/uploads/banner_bg/' . $img_name));
+
         Banner::insert([
             'title' => $request->title,
             'sub_title' => $request->sub_title,
+            'bg_img' => $img_name,
         ]);
         return back();
     }
@@ -60,9 +69,10 @@ class BannerController extends Controller
      * @param  \App\Models\Banner  $banner
      * @return \Illuminate\Http\Response
      */
-    public function edit(Banner $banner)
+    public function edit($id)
     {
-        //
+        $banner_data = Banner::find($id);
+        return view('banner.edit', compact('banner_data'));
     }
 
     /**
@@ -72,9 +82,26 @@ class BannerController extends Controller
      * @param  \App\Models\Banner  $banner
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, Banner $banner)
+    public function update(Request $request, $id)
     {
-        //
+        if ($request->hasFile('bg_img')) {
+            unlink(base_path('public/uploads/banner_bg/' . Banner::find($id)->bg_img));
+            $img = Image::make($request->bg_img);
+            $img_name = auth()->id() . auth()->user()->name . Str::random('5') . "." .
+                $request->bg_img->getClientOriginalExtension();
+            $img->save(base_path('public/uploads/banner_bg/' . $img_name));
+
+            Banner::find($id)->update([
+                'bg_img' => $img_name,
+            ]);
+        }
+        
+        Banner::find($id)->update([
+            'title' => $request->title,
+            'sub_title' => $request->sub_title,
+        ]);
+
+        return back();
     }
 
     /**
@@ -83,8 +110,10 @@ class BannerController extends Controller
      * @param  \App\Models\Banner  $banner
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Banner $banner)
+    public function destroy($id)
     {
-        //
+        unlink(base_path('public/uploads/banner_bg/' . Banner::find($id)->bg_img));
+        Banner::find($id)->delete();
+        return back();
     }
 }
